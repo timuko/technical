@@ -15,6 +15,46 @@ from .overlap_studies import sma, vwma
 # Math Operator Functions
 #
 
+########################################
+#
+# Super Trend
+#
+def SuperTrend(dataframe, period = 10, multiplier = 3, atrtype=1):
+    import talib.abstract as ta
+    df = dataframe.copy()
+    atr = 'ATR_' + str(period)
+    df[atr]=ta.ATR(df , timeperiod = period)
+    st = 'ST_' + str(period) + '_' + str(multiplier)
+    stx = 'STX_' + str(period) + '_' + str(multiplier)
+    # Compute basic upper and lower bands
+    if atrtype==1:
+        df['basic_ub'] = (df["high"] + df["low"]) / 2 + multiplier * df[atr]
+        df['basic_lb'] = (df["high"] + df["low"]) / 2 - multiplier * df[atr]
+    elif atrtype==2:
+        df['basic_ub'] = (df["high"] + df["low"] + df["close"]) / 3 + multiplier * df[atr]
+        df['basic_lb'] = (df["high"] + df["low"] + df["close"]) / 3 - multiplier * df[atr]
+    elif atrtype==3:
+        df['basic_ub'] = (df["high"] + df["low"]+df["open"] + df["close"]) / 4 + multiplier * df[atr]
+        df['basic_lb'] = (df["high"] + df["low"]+df["open"] + df["close"]) / 4 - multiplier * df[atr]
+    # Compute final upper and lower bands
+    df['final_ub'] = 0.00
+    df['final_lb'] = 0.00
+    for i in range(period, len(df)):
+        df['final_ub'].iat[i] = df['basic_ub'].iat[i] if df['basic_ub'].iat[i] < df['final_ub'].iat[i - 1] or df['close'].iat[i - 1] > df['final_ub'].iat[i - 1] else df['final_ub'].iat[i - 1]
+        df['final_lb'].iat[i] = df['basic_lb'].iat[i] if df['basic_lb'].iat[i] > df['final_lb'].iat[i - 1] or df['close'].iat[i - 1] < df['final_lb'].iat[i - 1] else df['final_lb'].iat[i - 1]
+    # Set the Supertrend value
+    df[st] = 0.00
+    for i in range(period, len(df)):
+        df[st].iat[i] = df['final_ub'].iat[i] if df[st].iat[i - 1] == df['final_ub'].iat[i - 1] and df['close'].iat[i] <= df['final_ub'].iat[i] else \
+                        df['final_lb'].iat[i] if df[st].iat[i - 1] == df['final_ub'].iat[i - 1] and df['close'].iat[i] >  df['final_ub'].iat[i] else \
+                        df['final_lb'].iat[i] if df[st].iat[i - 1] == df['final_lb'].iat[i - 1] and df['close'].iat[i] >= df['final_lb'].iat[i] else \
+                        df['final_ub'].iat[i] if df[st].iat[i - 1] == df['final_lb'].iat[i - 1] and df['close'].iat[i] <  df['final_lb'].iat[i] else 0.00
+    # Mark the trend direction up/down
+    df[stx] = np.where((df[st] > 0.00), np.where((df['close'] < df[st]), 'down',  'up'), np.NaN)
+    # Remove basic and final bands from the columns
+    df.drop(['basic_ub', 'basic_lb', 'final_ub', 'final_lb'], inplace=True, axis=1)
+    df.fillna(0, inplace=True)
+    return df
 
 ########################################
 #
