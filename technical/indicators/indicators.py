@@ -17,6 +17,23 @@ from .overlap_studies import sma, vwma
 
 ########################################
 #
+# vwap
+#
+def vwap(bars):
+    """
+    calculate vwap of entire time series
+    (input can be pandas series or numpy array)
+    bars are usually mid [ (h+l)/2 ] or typical [ (h+l+c)/3 ]
+    """
+    typical = ((bars['high'] + bars['low'] + bars['close']) / 3).values
+    volume = bars['volume'].values
+
+    return pd.Series(index=bars.index,
+                     data=np.cumsum(volume * typical) / np.cumsum(volume))
+
+
+########################################
+#
 # Super Trend
 #
 def SuperTrend(dataframe, period = 10, multiplier = 3, atrtype=1):
